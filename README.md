@@ -1,5 +1,5 @@
-# :pencil: Brokumen
-## Ngobrol bareng dokumen
+# :fist: Brokumen
+## :pencil: Ngobrol bareng dokumen
 
 dalam aplikasi ini kalian dapat mengupload dokumen kalian (pdf) dan mengobrol dan chatting dengan isi dokumen tersebut.
 aplikasi ini di dukung dengan AI dari OpenAi sehingga memungkinkan kalian untuk bertanya perihal yang ada di dalam dokumen tersebut.

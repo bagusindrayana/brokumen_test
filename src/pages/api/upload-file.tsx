@@ -7,7 +7,6 @@ import {
     HeadBucketCommand,
     CreateBucketCommand,
     PutBucketCorsCommand,
-    DeleteObjectCommand,
     PutObjectCommand,
 } from "@aws-sdk/client-s3";
 import { PDFLoader } from "langchain/document_loaders/fs/pdf";

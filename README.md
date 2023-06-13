@@ -24,6 +24,7 @@ repo ini di khusukan hanya untuk demo jadi bisa saja kedepannya fitur-fitur yang
 - React Icons
 - formidable
 - dotenv
+- react-pdf
 
 ### :gun: Cara menjalankan Di Lokal
 untuk menjalankan aplikasi ini kalian perlu api dari :

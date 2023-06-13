@@ -1,14 +1,12 @@
 'use client';
 import { LuFile, LuMic, LuSend, LuFilePlus, LuTrash, LuBot } from "react-icons/lu";
-import { useState, useEffect, useRef,useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import Chat from "./components/chat";
 import ReactPdfViewer from "./components/react-pdfviewer";
 import "react-pdf/dist/esm/Page/TextLayer.css";
 import toast, { Toaster } from 'react-hot-toast';
 import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
-
 import crypto from "crypto";
-// import { TextItem } from "pdfjs-dist/types/src/display/api";
 
 class SourceDocument {
   pageContent: String;

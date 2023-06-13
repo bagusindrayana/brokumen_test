@@ -17,14 +17,13 @@ import { Document } from "langchain/document";
 
 import { PineconeClient, QueryRequest } from "@pinecone-database/pinecone";
 import { PineconeStore } from "langchain/vectorstores/pinecone";
-import { instanceOfQueryRequest } from '@pinecone-database/pinecone/dist/pinecone-generated-ts-fetch';
+
 function transformDoc(doc: Document, { userId, name }: { userId: string; name: string }) {
     return new Document({
         pageContent: doc.pageContent,
         metadata: {
             userId,
             name,
-            // loc: doc.metadata.loc as string, //TODO: objects are not supported, needs to be flattened
         },
     });
 }

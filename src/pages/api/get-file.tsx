@@ -81,7 +81,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             environment: `${process.env.PINECONE_ENVIRONMENT}`,
         });
         const pineconeIndex = pineClient.Index(`${process.env.PINECONE_INDEX}`);
-        const vectors = [...Array(1536)].map(() => 0);
+        //const vectors = [...Array(1536)].map(() => 0);
         //check if file exists with Key
         // const queryRequest: QueryRequest = {
         //     topK: 1,
@@ -115,8 +115,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 body: raw,
             };
 
-            
-            fetch("https://documents-20f626f.svc.asia-southeast1-gcp.pinecone.io/describe_index_stats", requestOptions)
+            //check if vector database for current file exists
+            fetch(`https://${process.env.PINECONE_INDEX_HOST}/describe_index_stats`, requestOptions)
                 .then(response => response.json())
                 .then(async (result:any) => {
                     const namespace = result.namespaces;

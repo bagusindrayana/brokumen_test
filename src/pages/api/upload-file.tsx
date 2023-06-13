@@ -8,6 +8,7 @@ import {
     CreateBucketCommand,
     PutBucketCorsCommand,
     PutObjectCommand,
+    DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
 import { PDFLoader } from "langchain/document_loaders/fs/pdf";
 import { DocxLoader } from "langchain/document_loaders/fs/docx";
@@ -136,6 +137,7 @@ export default async function handler(
                 } else {
                     let Loader;
                     const contentType = persistentFile.mimetype;
+                    //hanya support pdf, karena perlu viewer untuk dokumen lain di bagian frontend
                     switch (persistentFile.mimetype) {
                         case "application/pdf":
                             Loader = PDFLoader;
@@ -158,7 +160,6 @@ export default async function handler(
                         pdfjs: () => import("pdfjs-dist/legacy/build/pdf.js"),
                     });
                     const rawDocs = await loader.load();
-                    console.log(rawDocs.length);
                     const needsSplitting = contentType === "text/plain";
                     const textSplitter = new RecursiveCharacterTextSplitter();
                     textSplitter.chunkSize = 500;
@@ -166,15 +167,26 @@ export default async function handler(
                     const docs = needsSplitting ? await textSplitter.splitDocuments(rawDocs) : rawDocs;
                     const formattedDocs = docs.map((doc) => transformDoc(doc, { userId: appId, name: persistentFile.originalFilename as string }));
 
-                    await pineClient.init({
-                        apiKey: `${process.env.PINECONE_API_KEY}`,
-                        environment: `${process.env.PINECONE_ENVIRONMENT}`,
-                    });
-                    const pineconeIndex = pineClient.Index(`${process.env.PINECONE_INDEX}`);
-
-                    await PineconeStore.fromDocuments(formattedDocs, embeddings, {
-                        pineconeIndex,
-                    });
+                    try {
+                        await pineClient.init({
+                            apiKey: `${process.env.PINECONE_API_KEY}`,
+                            environment: `${process.env.PINECONE_ENVIRONMENT}`,
+                        });
+                        const pineconeIndex = pineClient.Index(`${process.env.PINECONE_INDEX}`);
+    
+                        await PineconeStore.fromDocuments(formattedDocs, embeddings, {
+                            pineconeIndex,
+                        });
+                    } catch (e) {
+                        //jika gagal membuat vector hapus file dari S3
+                        //console.log(e);
+                        status = 500;
+                        resultBody = {
+                            status: 'fail', message: 'Vector Database Error'
+                        }
+                        //delete file from S3
+                        await S3.send(new DeleteObjectCommand({ Bucket: Bucket, Key: Key }));
+                    }
                 }
             } catch (e) {
                 //console.log(e);

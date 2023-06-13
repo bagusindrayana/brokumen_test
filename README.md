@@ -34,6 +34,7 @@ untuk menjalankan aplikasi ini kalian perlu api dari :
 - clone repo ini
 - copy file .env.example dan rename menjadi .env
 - isi semua kredeensial yang ada di .env
+- jalankan `npm install`
 - jalankan `npm run dev`
 
 ### :telescope: Cara kerja aplikasi

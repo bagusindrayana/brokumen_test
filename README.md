@@ -27,10 +27,12 @@ repo ini di khusukan hanya untuk demo jadi bisa saja kedepannya fitur-fitur yang
 - react-pdf
 
 ### :gun: Cara menjalankan Di Lokal
-untuk menjalankan aplikasi ini kalian perlu api dari :
+<p>untuk menjalankan aplikasi ini kalian perlu api dari :</p>
 - OpenAi (untuk gpt-3.5-turbo dan ada-002 emmbeding)
 - Cloudflare R2 (untuk object storage)
 - Pinecone (untuk vector database) 
+
+<p>Kemudian :</p>
 
 - clone repo ini
 - copy file .env.example dan rename menjadi .env

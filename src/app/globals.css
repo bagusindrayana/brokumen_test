@@ -1,0 +1,59 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 214, 219, 220;
+  --background-end-rgb: 255, 255, 255;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 0, 0, 0;
+    --background-end-rgb: 0, 0, 0;
+  }
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(var(--background-end-rgb))
+    )
+    rgb(var(--background-start-rgb));
+}
+
+.react-pdf__Page__textContent,.react-pdf__Page__annotations {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  color: transparent !important;
+  /* overflow: hidden;
+  display: none;
+  transform: ""; */
+}
+
+.right-panel {
+  max-height: calc(100vh - 5rem);
+}
+
+.left-panel {
+  max-height: calc(100vh - 5rem);
+}
+
+tr.hover {
+  cursor: pointer;
+}
+
+.alert-message {
+  z-index: 99999;
+}
+
+/* body {
+  overflow: hidden;
+} */

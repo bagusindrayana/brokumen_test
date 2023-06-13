@@ -1,0 +1,16 @@
+[phases.setup]
+nixPkgs = [
+    "nodejs-18_x"
+]
+aptPkgs = [
+    "libuuid1","libaio-dev"
+]
+
+[phases.install]
+cmds = ["npm install"]
+
+[start]
+cmd = "npm run start"
+
+[phases.build]
+cmd = "npm rebuild && cp /lib64/{libuuid,libmount,libblkid}.so.1 node_modules/canvas/build/Release/ && npm run build && cp /lib86/{libuuid,libmount,libblkid}.so.1 node_modules/canvas/build/Release/"

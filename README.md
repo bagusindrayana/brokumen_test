@@ -28,6 +28,7 @@ repo ini di khusukan hanya untuk demo jadi bisa saja kedepannya fitur-fitur yang
 
 ### :gun: Cara menjalankan Di Lokal
 <p>untuk menjalankan aplikasi ini kalian perlu api dari :</p>
+
 - OpenAi (untuk gpt-3.5-turbo dan ada-002 emmbeding)
 - Cloudflare R2 (untuk object storage)
 - Pinecone (untuk vector database) 

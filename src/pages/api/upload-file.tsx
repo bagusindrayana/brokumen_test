@@ -160,11 +160,24 @@ export default async function handler(
                         pdfjs: () => import("pdfjs-dist/legacy/build/pdf.js"),
                     });
                     const rawDocs = await loader.load();
-                    const needsSplitting = contentType === "text/plain";
+                    console.log(rawDocs.length);
+                    //max 100 halaman, buat jaga2
+                    if (rawDocs.length > 100) {
+                        status = 500;
+                        resultBody = {
+                            status: 'fail', message: 'Jumlah halaman tidak boleh lebih dari 100'
+                        }
+                        //delete file from S3
+                        await S3.send(new DeleteObjectCommand({ Bucket: Bucket, Key: Key }));
+                        break;
+                    }
+                    //const needsSplitting = contentType === "text/plain";
                     const textSplitter = new RecursiveCharacterTextSplitter();
+                    //split text per 500 karakter untuk menghindari error max context
                     textSplitter.chunkSize = 500;
                     textSplitter.chunkOverlap = 10;
-                    const docs = needsSplitting ? await textSplitter.splitDocuments(rawDocs) : rawDocs;
+                    // const docs = needsSplitting ? await textSplitter.splitDocuments(rawDocs) : rawDocs;
+                    const docs = await textSplitter.splitDocuments(rawDocs);
                     const formattedDocs = docs.map((doc) => transformDoc(doc, { userId: appId, name: persistentFile.originalFilename as string }));
 
                     try {

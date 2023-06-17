@@ -85,7 +85,7 @@ export default function Home() {
         const cleanText = page.innerHTML.replace(/<[^>]*>?/gm, '');
         const spans = page.querySelectorAll('span[role="presentation"]');
         
-        if(cleanText == cleanContent.replace(/(\r\n|\n|\r)/gm, "")){
+        if(cleanText.includes(cleanContent.replace(/(\r\n|\n|\r)/gm, ""))){
           // console.log(index);
           page.scrollIntoView({ behavior: "smooth", inline: "nearest" });
           spans.forEach((span) => {

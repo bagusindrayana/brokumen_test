@@ -1,16 +1,18 @@
 'use client';
 import { LuFile, LuMic, LuSend, LuFilePlus, LuTrash, LuBot } from "react-icons/lu";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Chat from "./components/chat";
 import ReactPdfViewer from "./components/react-pdfviewer";
 import "react-pdf/dist/esm/Page/TextLayer.css";
 import toast, { Toaster } from 'react-hot-toast';
 import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
+
 import crypto from "crypto";
+// import { TextItem } from "pdfjs-dist/types/src/display/api";
 
 class SourceDocument {
   pageContent: String;
-  
+
   constructor(pageContent: String) {
     this.pageContent = pageContent;
   }
@@ -28,8 +30,8 @@ class ChatMessage {
   }
 }
 
-function getLastSpan(element:Element){
-  if (element.tagName !== 'span'){
+function getLastSpan(element: Element) {
+  if (element.tagName !== 'span') {
     return element;
   }
   element.querySelectorAll('span').forEach((span) => {
@@ -57,16 +59,16 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [loadingChat, setLoadingChat] = useState(false);
   const [fileList, setFileList] = useState<Array<any>>([])
-  const [selectedFile, setSelectedFile] = useState(-1);
+  const [selectedFile, setSelectedFile] = useState("-1");
   const messagesEndRef = useRef<null | HTMLDivElement>(null);
   const [stringToHighlight, setStringToHighlight] = useState<string[] | any>(null);
 
-  
 
 
-  const selectSource = (chatIndex: number,sourceIndex:number) => {
+
+  const selectSource = (chatIndex: number, sourceIndex: number) => {
     const source = chatHistory[chatIndex].sourceDocuments[sourceIndex];
-    
+
     let cleanContent = source.pageContent.replace(/<[^>]*>?/gm, '');
     //remove double /n
     cleanContent = cleanContent.replace(/(\r\n|\n|\r)/gm, "");
@@ -76,36 +78,38 @@ export default function Home() {
     const rArr = cleanContent.split("\n").map((value) => value.trim()).filter((value) => value.length > 0);
     // console.log(rArr);
     //setStringToHighlight(rArr);
-    if(window){
+    if (window) {
       const reactPdfPage = document.querySelectorAll('div.react-pdf__Page');
       //loop reactPdfPage
-      reactPdfPage.forEach((page,index) => {
-       
+      reactPdfPage.forEach((page, index) => {
+
         //clean text from html tag
         const cleanText = page.innerHTML.replace(/<[^>]*>?/gm, '');
         const spans = page.querySelectorAll('span[role="presentation"]');
-        
-        if(cleanText.includes(cleanContent.replace(/(\r\n|\n|\r)/gm, ""))){
+
+        //jika sumber ada di dalam halaman
+        if (cleanText.includes(cleanContent)) {
           // console.log(index);
           page.scrollIntoView({ behavior: "smooth", inline: "nearest" });
           spans.forEach((span) => {
             //replace inner html with mark
             const lastSpan = getLastSpan(span);
-            if(lastSpan != undefined && lastSpan?.innerHTML != ""){
-              lastSpan.innerHTML = "<mark>"+span.innerHTML+"</mark>";
+            
+            if (lastSpan != undefined && lastSpan?.innerHTML != "") {
+              lastSpan.innerHTML = "<mark>" + span.innerHTML + "</mark>";
             }
           })
         } else {
           spans.forEach((span) => {
             //remove mark inside span
             const lastSpan = getLastSpan(span);
-            if(lastSpan != undefined && lastSpan?.innerHTML != ""){
+            if (lastSpan != undefined && lastSpan?.innerHTML != "") {
               lastSpan.innerHTML = span.innerHTML.replace(/<mark>/gm, '').replace(/<\/mark>/gm, '');
             }
             //span.innerHTML = span.innerHTML.replace(/<mark>/gm, '').replace(/<\/mark>/gm, '');
           })
         }
-        
+
       })
     }
   }
@@ -119,11 +123,11 @@ export default function Home() {
   }, [chatHistory]);
 
   const handleFileSelect = (event: any) => {
-    if(event.target.files != undefined && event.target.files.length > 0){
+    if (event.target.files != undefined && event.target.files.length > 0) {
       const file = event.target.files[0];
       const sizeByte = file.size;
-      if(sizeByte > 5000000){
-        alert("File size must be less than 10MB");
+      if (sizeByte > 5000000) {
+        alert("File size must be less than 5MB");
         document.querySelectorAll('input[type=file]').forEach((input) => {
           (input as HTMLInputElement).value = ''
         })
@@ -134,14 +138,19 @@ export default function Home() {
     }
   };
 
-  const selectFile = async (index: number) => {
-    setSelectedFile(index);
+  function selectFileByUrl(url:string) {
+    return fileList.find((file) => file.url === url);
+  }
+
+  const selectFile = async (url: string) => {
+    setSelectedFile(url);
+    const file = selectFileByUrl(url);
     (document.getElementById('my_modal_1') as HTMLDialogElement || null)?.close();
     setLoading(true);
     const requestHeaders: HeadersInit = new Headers();
     requestHeaders.set('app_id', userId as string);
-    requestHeaders.set('key', fileList[index].name);
-    requestHeaders.set('e_tag', fileList[index].e_tag);
+    requestHeaders.set('key', file.name);
+    requestHeaders.set('e_tag', file.e_tag);
     const res = await fetch('/api/get-file', {
       headers: requestHeaders
     })
@@ -149,16 +158,17 @@ export default function Home() {
     if (data) {
       setPdf(await data.arrayBuffer())
     }
-    getChatHistory(`${index}`);
+    getChatHistory(`${url}`);
     setLoading(false);
 
   };
 
-  const deleteFile = async (index: number) => {
+  const deleteFile = async (url: string) => {
     const requestHeaders: HeadersInit = new Headers();
+    const file = selectFileByUrl(url);
     requestHeaders.set('app_id', userId as string);
-    requestHeaders.set('key', fileList[index].name);
-    requestHeaders.set('e_tag', fileList[index].e_tag);
+    requestHeaders.set('key', file.name);
+    requestHeaders.set('e_tag', file.url);
     const res = await fetch('/api/delete-file', {
       method: 'DELETE',
       headers: requestHeaders
@@ -166,18 +176,24 @@ export default function Home() {
     if (res.ok) {
       const data = await res.json()
       if (data) {
-        window.localStorage.removeItem(userId as string + '_chatHistory_' + `${index}`);
-        setFileList([...fileList.filter((item, i) => i !== index)])
-        if (index == selectedFile) {
+        window.localStorage.removeItem(userId as string + '_chatHistory_' + `${url}`);
+        setFileList([...fileList.filter((item, i) => item.url !== url)])
+        if (url == selectedFile) {
           setPdf(null)
-          setSelectedFile(-1)
+          setSelectedFile("-1")
           setChatHistory([])
-          
+
         }
         toast.success('Delete success')
       }
     } else {
-      toast.error('Delete failed : ' + res.statusText)
+      const data = await res.json()
+      if (data && data.message) {
+        toast.error('Delete failed : ' + data.message)
+      } else {
+        toast.error('Delete failed : ' + res.statusText)
+      }
+
     }
   }
 
@@ -195,31 +211,39 @@ export default function Home() {
       })
       if (res.ok) {
         const data = await res.json()
+
         setFileList([...fileList, {
           name: file.name,
           size: file.size,
+          url:data.data.url,
+          time: data.data.LastModified
         }])
-  
+
         getListFile()
-        setSelectedFile(fileList.length)
-        getChatHistory(`${fileList.length}`);
+        setSelectedFile(data.data.url)
+        getChatHistory(`${data.data.url}`);
         let reader = new FileReader();
-  
+
         reader.onload = function (e) {
           if (reader.result != null) {
             const buffer = reader.result as ArrayBuffer;
             setPdf(buffer);
-            
+
           }
         }
-  
+
         reader.readAsArrayBuffer(file);
-        
+
       } else {
         document.querySelectorAll('input[type=file]').forEach((input) => {
           (input as HTMLInputElement).value = ''
         })
-        toast.error('Upload failed : ' + res.statusText)
+        const data = await res.json()
+        if (data && data.message) {
+          toast.error('Upload failed : ' + data.message)
+        } else {
+          toast.error('Upload failed : ' + res.statusText)
+        }
       }
     } catch (error) {
       document.querySelectorAll('input[type=file]').forEach((input) => {
@@ -251,9 +275,10 @@ export default function Home() {
   //  }, [chatHistory])
   const retriveMessage = async (previosChats: Array<ChatMessage>, currentChats: Array<ChatMessage>) => {
     setLoadingChat(true)
+    const file = selectFileByUrl(selectedFile);
     const requestHeaders: HeadersInit = new Headers();
     requestHeaders.append('app_id', userId as string);
-    requestHeaders.append('key', fileList[selectedFile].name);
+    requestHeaders.append('key', file.name);
     let _chat_history: any[] = [];
     previosChats.forEach((chat) => {
       _chat_history.push({
@@ -278,12 +303,17 @@ export default function Home() {
           })
         });
       }
-      const responseChat = new ChatMessage(data.response, false,sourceDocuments);
+      const responseChat = new ChatMessage(data.response, false, sourceDocuments);
       currentChats.push(responseChat);
-      saveChatHistory(`${selectedFile}`, currentChats)
+      saveChatHistory(selectedFile, currentChats)
       setChatHistory([...currentChats]);
     } else {
-      toast.error('Chat failed : ' + res.statusText)
+      const data = await res.json()
+      if (data && data.message) {
+        toast.error('Chat failed : ' + data.message)
+      } else {
+        toast.error('Chat failed : ' + res.statusText)
+      }
     }
     setLoadingChat(false)
 
@@ -294,12 +324,12 @@ export default function Home() {
     if (textMessage.length === 0) {
       return;
     }
-    if (selectedFile == -1) {
+    if (selectedFile == "-1") {
       alert("Please select a file to chat")
       return;
     }
 
-    if (pdf == null && selectedFile != -1) {
+    if (pdf == null && selectedFile != "-1") {
       alert("Please wait for the file to be loaded")
       return;
     }
@@ -307,7 +337,7 @@ export default function Home() {
     const previousChats = [...chatHistory]
     const currentChats = [...chatHistory];
     currentChats.push(newChat);
-    saveChatHistory(`${selectedFile}`, currentChats)
+    saveChatHistory(selectedFile, currentChats)
     setChatHistory([...currentChats]);
     settextMessage("");
     retriveMessage(previousChats, currentChats);
@@ -331,10 +361,11 @@ export default function Home() {
   const getFile = async (e: any) => {
     setLoading(true)
     setSelectedFile(e.target.value)
+    const file = selectFileByUrl(e.target.value);
     const requestHeaders: HeadersInit = new Headers();
     requestHeaders.set('app_id', userId as string);
-    requestHeaders.set('key', fileList[e.target.value].name);
-    requestHeaders.set('e_tag', fileList[e.target.value].e_tag);
+    requestHeaders.set('key', file.name);
+    requestHeaders.set('e_tag', file.e_tag);
     try {
       const res = await fetch('/api/get-file', {
         headers: requestHeaders
@@ -348,23 +379,23 @@ export default function Home() {
         toast.success('Get file success')
       } else {
         toast.error('Get file failed : ' + res.statusText)
-        
+
       }
-    } catch (error:any) {
+    } catch (error: any) {
       toast.error('Get file failed : ' + error.message)
     }
     setLoading(false)
 
   }
 
-  function saveChatHistory(indexFile: string, _chatHistory: Array<ChatMessage>) {
-    window.localStorage.setItem(userId as string + '_chatHistory_' + indexFile, JSON.stringify(_chatHistory));
+  function saveChatHistory(urlFile: string, _chatHistory: Array<ChatMessage>) {
+    window.localStorage.setItem(userId as string + '_chatHistory_' + urlFile, JSON.stringify(_chatHistory));
   }
 
-  function getChatHistory(indexFile: string) {
+  function getChatHistory(urlFile: string) {
 
     if (window) {
-      const sessionChatHistory = window.localStorage.getItem(userId as string + '_chatHistory_' + indexFile);
+      const sessionChatHistory = window.localStorage.getItem(userId as string + '_chatHistory_' + urlFile);
       if (sessionChatHistory) {
         const _chat_history = JSON.parse(sessionChatHistory);
         let _chat_history_array: ChatMessage[] = [];
@@ -376,7 +407,7 @@ export default function Home() {
         })
         setChatHistory([..._chat_history_array]);
       } else {
-        saveChatHistory(`${indexFile}`, [])
+        saveChatHistory(`${urlFile}`, [])
         setChatHistory([...[]]);
       }
     }
@@ -424,7 +455,7 @@ export default function Home() {
                 <tbody>
                   {fileList.map((file, index) =>
                     <tr className="hover" key={index} onClick={(e) => {
-                      selectFile(index)
+                      selectFile(file.url)
                     }}>
                       <th>{index + 1}</th>
                       <td>{file.name}</td>
@@ -435,7 +466,7 @@ export default function Home() {
                         <button className="btn btn-xs" type="button" onClick={(e) => {
                           const confirm = window.confirm('Apakah anda yakin ingin menghapus berkas ini? semua riwayat percakapan akan terhapus');
                           if (confirm) {
-                            deleteFile(index);
+                            deleteFile(file.url);
                             (document.getElementById('my_modal_1') as HTMLDialogElement || null)?.close();
                           }
 
@@ -469,7 +500,7 @@ export default function Home() {
             <select className="select w-full max-w-xs" value={selectedFile} onChange={getFile}>
               <option disabled value={-1}>Pilih Dokumen</option>
               {fileList.map((file, index) =>
-                <option key={index} value={index} >{file.name}</option>
+                <option key={index} value={file.url} >{file.name}</option>
               )}
             </select>
           </div>
@@ -511,14 +542,14 @@ export default function Home() {
 
               {chatHistory.map((chat, index: number) =>
                 <div className="w-full" key={index}>
-                  <Chat  text={chat.text} isMe={chat.isMe} />
+                  <Chat text={chat.text} isMe={chat.isMe} />
                   {chat.sourceDocuments?.map((doc, doc_index) =>
-                    <div className="badge cursor-pointer" key={"sumber-"+index+"-"+doc_index} onClick={(e)=>{
-                      selectSource(index,doc_index);
-                    }}>Sumber {doc_index+1}</div>
+                    <div className="badge cursor-pointer" key={"sumber-" + index + "-" + doc_index} onClick={(e) => {
+                      selectSource(index, doc_index);
+                    }}>Sumber {doc_index + 1}</div>
                   )}
                 </div>
-                )
+              )
               }
               {loadingChat ?
                 <div className="chat chat-start" key={0}>
@@ -547,7 +578,7 @@ export default function Home() {
                   onKeyDown={enterInput}
                   onChange={handleInputChange}
                 />
-                {isTyping ? (
+                {/* {isTyping ? (
                   <button className="btn btn-square" onClick={sendMessage}>
                     <LuSend className="w-5 h-5 text-base-500" />
                   </button>
@@ -555,7 +586,10 @@ export default function Home() {
                   <button className="btn btn-square">
                     <LuMic className="w-5 h-5 text-base-500" />
                   </button>
-                )}
+                )} */}
+                <button className="btn btn-square" onClick={sendMessage}>
+                    <LuSend className="w-5 h-5 text-base-500" />
+                  </button>
               </div>
             </div>
           </div>

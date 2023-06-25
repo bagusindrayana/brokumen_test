@@ -55,7 +55,8 @@ export default async function handler(
     // //console.log(file);
     const appId = req.headers.app_id as string;
     const Bucket = `doc-${appId}`;
-    let status = 200, resultBody = { status: 'ok', message: 'Files were uploaded successfully' };
+    let status = 200;
+    let resultBody;
     const files = await new Promise<ProcessedFiles | undefined>((resolve, reject) => {
         const form = new formidable.IncomingForm({
             maxFileSize: 5 * 1024 * 1024, //5MB,
@@ -135,6 +136,17 @@ export default async function handler(
                         status: 'fail', message: 'Upload error'
                     }
                 } else {
+                    let url = response.headers.get('etag') || ""
+                    //remove " from etag
+                    url = url?.replace(/"/g, "");
+                    resultBody = {
+                        status: 'success', message: 'Upload success', data: {
+                            name: Key,
+                            size: persistentFile.size,
+                            url: url,
+                            LastModified: new Date().toISOString(),
+                        }
+                    }
                     let Loader;
                     const contentType = persistentFile.mimetype;
                     //hanya support pdf, karena perlu viewer untuk dokumen lain di bagian frontend
@@ -161,7 +173,16 @@ export default async function handler(
                     });
                     const rawDocs = await loader.load();
                     console.log(rawDocs.length);
-                    //max 100 halaman, buat jaga2
+                    if (rawDocs.length <= 0) {
+                        status = 500;
+                        resultBody = {
+                            status: 'fail', message: 'Halaman pdf tidak terbaca'
+                        }
+                        //delete file from S3
+                        await S3.send(new DeleteObjectCommand({ Bucket: Bucket, Key: Key }));
+                        break;
+                    }
+                    //max 200 halaman
                     if (rawDocs.length > 100) {
                         status = 500;
                         resultBody = {
@@ -171,9 +192,8 @@ export default async function handler(
                         await S3.send(new DeleteObjectCommand({ Bucket: Bucket, Key: Key }));
                         break;
                     }
-                    //const needsSplitting = contentType === "text/plain";
+                    const needsSplitting = contentType === "text/plain";
                     const textSplitter = new RecursiveCharacterTextSplitter();
-                    //split text per 500 karakter untuk menghindari error max context
                     textSplitter.chunkSize = 500;
                     textSplitter.chunkOverlap = 10;
                     // const docs = needsSplitting ? await textSplitter.splitDocuments(rawDocs) : rawDocs;
@@ -192,7 +212,7 @@ export default async function handler(
                         });
                     } catch (e) {
                         //jika gagal membuat vector hapus file dari S3
-                        //console.log(e);
+                        console.log(e);
                         status = 500;
                         resultBody = {
                             status: 'fail', message: 'Vector Database Error'
@@ -202,7 +222,7 @@ export default async function handler(
                     }
                 }
             } catch (e) {
-                //console.log(e);
+                console.log(e);
                 status = 500;
                 resultBody = {
                     status: 'fail', message: 'Upload error'
